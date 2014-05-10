@@ -56,7 +56,7 @@ public class Main {
 			}
 		}
 
-		System.out.format("%.2f%% of problems were solved.%n", (double)count.get()/ITERATIONS);*/
+		System.out.format("%.1f%% of problems were solved.%n", ((double)count.get()/ITERATIONS)*100);*/
 
 		Set<Integer> solutions = new HashSet<>();
 		double count = 0;
@@ -76,7 +76,7 @@ public class Main {
 			}
 		}
 
-		System.out.format("%.3f%% of problems were solved.%n", count/ITERATIONS);
+		System.out.format("%.1f%% of problems were solved.%n", (count/ITERATIONS)*100);
 
 		System.out.format("Solution Set: %s%n", Arrays.toString(solutions.toArray()));
 	}
@@ -200,7 +200,7 @@ public class Main {
 							minCost = cost;
 							bestSuccessors.clear();
 						}
-						
+
 						copy = Arrays.copyOf(board, board.length);
 						bestSuccessors.add(new Node(copy, cost));
 					}
