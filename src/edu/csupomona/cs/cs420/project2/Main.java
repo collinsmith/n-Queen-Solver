@@ -183,23 +183,26 @@ public class Main {
 			int cost;
 			int originalValue;
 			int minCost = COST-1;
+			int[] copy;
 			int[] board = Arrays.copyOf(BOARD, BOARD.length);
 			List<Node> bestSuccessors = new ArrayList<>();
-			for (int i = 0; i < BOARD.length; i++) {
+			for (int i = 0; i < board.length; i++) {
 				originalValue = board[i];
-				for (int j = 0; j < BOARD.length; j++) {
+				for (int j = 0; j < board.length; j++) {
 					if (j == originalValue) {
 						continue;
 					}
 
 					board[i] = j;
 					cost = countAttacking(board);
-					if (cost == minCost) {
-						bestSuccessors.add(new Node(board, cost));
-					} else if (cost < minCost) {
-						minCost = cost;
-						bestSuccessors.clear();
-						bestSuccessors.add(new Node(board, cost));
+					if (cost <= minCost) {
+						if (cost == minCost) {
+							minCost = cost;
+							bestSuccessors.clear();
+						}
+						
+						copy = Arrays.copyOf(board, board.length);
+						bestSuccessors.add(new Node(copy, cost));
 					}
 				}
 
