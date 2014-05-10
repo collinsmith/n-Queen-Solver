@@ -120,10 +120,11 @@ public class Main {
 			}
 
 			neighbor = neighbors.get(RAND.nextInt(neighbors.size()));
-			if (current.COST <= neighbor.COST) {
+			// I don't need this because generageBestSuccessors() guaranees that the cost of all are better than current
+			/*if (current.COST <= neighbor.COST) {
 				System.out.format("Finished in %d moves.%n", moves);
 				return current;
-			}
+			}*/
 
 			current = neighbor;
 		}
