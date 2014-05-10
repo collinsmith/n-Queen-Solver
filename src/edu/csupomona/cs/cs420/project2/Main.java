@@ -9,6 +9,7 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
@@ -28,45 +29,6 @@ public class Main {
 		System.out.format("Do you want to view the paths (y/n)? ");
 		final boolean PRINT_PATHS = SCAN.next("(y|n)").matches("y");
 		SCAN.close();
-
-		/*Set<Integer> solutions = Collections.synchronizedSet(new HashSet<>());
-		final AtomicLong count = new AtomicLong();
-		final AtomicInteger iteration = new AtomicInteger();
-
-		final int availProcessors = Runtime.getRuntime().availableProcessors();
-		Thread[] threads = new Thread[availProcessors];
-		for (int j = 0; j < threads.length; j++) {
-			threads[j] = new Thread(() -> {
-				Node n;
-				int[] board;
-				int iterationCache;
-				for (int i = 0; i < ITERATIONS/availProcessors; i++) {
-					board = generateRandomBoard(N);
-					n = hillClimb(board);
-					iterationCache = iteration.incrementAndGet();
-					synchronized (System.out) {
-						System.out.format("Iteration %d:%n", iterationCache);
-						System.out.println(n);
-						System.out.format("Number of attacking queens: %d%n", n.COST);
-					}
-
-					if (n.COST == 1) {
-						count.incrementAndGet();
-						solutions.add(iterationCache);
-					}
-				}
-			});
-		}
-
-		for (Thread t : threads) {
-			try {
-				t.start();
-				t.join();
-			} catch (InterruptedException e) {
-			}
-		}
-
-		System.out.format("%.1f%% of problems were solved.%n", ((double)count.get()/ITERATIONS)*100);*/
 
 		Set<Integer> solutions = new HashSet<>();
 		double count = 0;
@@ -238,6 +200,10 @@ public class Main {
 		}
 
 		List<Node> generateBetterSuccessors() {
+			if (COST == 1) {
+				return Collections.EMPTY_LIST;
+			}
+
 			int cost;
 			int originalValue;
 			int minCost = Math.max(COST-1, 1);
@@ -254,9 +220,9 @@ public class Main {
 					board[i] = j;
 					cost = countAttacking(board);
 					if (cost <= minCost) {
-						//if (cost <= 0) {
-						//	continue;
-						//}
+						if (cost <= 0) {
+							continue;
+						}
 
 						if (cost == minCost) {
 							minCost = cost;
