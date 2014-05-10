@@ -1,5 +1,12 @@
 package edu.csupomona.cs.cs420.project2;
 
+import java.io.BufferedWriter;
+import java.io.IOException;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -7,6 +14,7 @@ import java.util.List;
 import java.util.Random;
 import java.util.Scanner;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 public class Main {
 	private static final Random RAND = new Random();
@@ -17,6 +25,8 @@ public class Main {
 		final int N = SCAN.nextInt();
 		System.out.format("How many random n-Queen problems do you want to generate? ");
 		final int ITERATIONS = SCAN.nextInt();
+		System.out.format("Do you want to view the paths (y/n)? ");
+		final boolean PRINT_PATHS = SCAN.next("(y|n)").matches("y");
 		SCAN.close();
 
 		/*Set<Integer> solutions = Collections.synchronizedSet(new HashSet<>());
@@ -60,25 +70,48 @@ public class Main {
 
 		Set<Integer> solutions = new HashSet<>();
 		double count = 0;
+		double moves = 0;
 
-		Node n;
-		int[] board;
-		for (int i = 0; i < ITERATIONS; i++) {
-			board = generateRandomBoard(N);
-			n = hillClimb(board);
-			System.out.format("Iteration %d:%n", i+1);
-			System.out.println(n);
-			System.out.format("Number of attacking queens: %d%n", n.COST);
-
-			if (n.COST == 1) {
-				count++;
-				solutions.add(i+1);
+		Path file = Paths.get(".", "output", "output.txt");
+		Charset charset = Charset.forName("US-ASCII");
+		try (BufferedWriter writer = Files.newBufferedWriter(file, charset, StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING)) {
+			if (!PRINT_PATHS) {
+				System.out.format("%-8s %-8s %-8s %-16s%n", "#", "queens", "moves", "run time");
 			}
+
+			writer.write(String.format("%s\t%s\t%s\t%s%n", "#", "queens", "moves", "run time"));
+
+			Result r;
+			int[] board;
+			for (int i = 0; i < ITERATIONS; i++) {
+				board = generateRandomBoard(N);
+				r = hillClimb(board, PRINT_PATHS);
+				if (PRINT_PATHS) {
+					System.out.format("Iteration %d:%n", i+1);
+					System.out.println(r.TERMINAL_STATE);
+					System.out.format("Finished in %d moves.%n", r.NUM_MOVES);
+					System.out.format("Number of attacking queens: %d%n", r.TERMINAL_STATE.COST);
+				} else {
+					System.out.format("%-8d %-8d %-8d %-16d%n", i+1, r.TERMINAL_STATE.COST, r.NUM_MOVES, TimeUnit.NANOSECONDS.toNanos(r.END_TIME-r.START_TIME));
+				}
+
+				if (r.TERMINAL_STATE.COST == 1) {
+					count++;
+					moves += r.NUM_MOVES;
+					solutions.add(i+1);
+				}
+
+				writer.write(String.format("%d\t%d\t%d\t%d%n", i+1, r.TERMINAL_STATE.COST, r.NUM_MOVES, TimeUnit.NANOSECONDS.toNanos(r.END_TIME-r.START_TIME)));
+				writer.flush();
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
 		}
 
-		System.out.format("%.1f%% of problems were solved.%n", (count/ITERATIONS)*100);
 
-		System.out.format("Solution Set: %s%n", Arrays.toString(solutions.toArray()));
+		System.out.format("%.1f%% of problems were solved.%n", (count/ITERATIONS)*100);
+		System.out.format("Avg. number of moves needed per solution: %.1f%n", moves/count);
+		System.out.format("Solution Set (Iteration #): %s%n", Arrays.toString(solutions.toArray(new Integer[0])));
 	}
 
 	private static int[] generateRandomBoard(final int N) {
@@ -106,27 +139,34 @@ public class Main {
 		arr[i] ^= arr[j];
 	}
 
-	private static Node hillClimb(int[] initialState) {
+	private static Result hillClimb(int[] initialState, boolean printPaths) {
 		Node neighbor;
-		List<Node> neighbors;
+		List<Node> betterSuccessors;
 		Node current = new Node(initialState);
+
 		int moves = 0;
+		final long START_TIME = System.nanoTime();
 		while (true) {
-			moves++;
-			neighbors = current.generateBestSuccessors();
-			if (neighbors.isEmpty()) {
-				System.out.format("Finished in %d moves.%n", moves);
-				return current;
+			if (printPaths) {
+				System.out.format("Move %d%n", moves);
+				System.out.println(current);
+				System.out.println();
 			}
 
-			neighbor = neighbors.get(RAND.nextInt(neighbors.size()));
-			// I don't need this because generageBestSuccessors() guaranees that the cost of all are better than current
-			/*if (current.COST <= neighbor.COST) {
-				System.out.format("Finished in %d moves.%n", moves);
-				return current;
-			}*/
+			betterSuccessors = current.generateBetterSuccessors();
+			if (betterSuccessors.isEmpty()) {
+				// peak reached
+				return new Result(current, moves, START_TIME);
+			}
 
+			neighbor = betterSuccessors.get(RAND.nextInt(betterSuccessors.size()));
 			current = neighbor;
+			if (current.COST == 1) {
+				// we've found a solution
+				return new Result(current, moves, START_TIME);
+			}
+
+			moves++;
 		}
 	}
 
@@ -145,6 +185,20 @@ public class Main {
 			System.arraycopy(n2.BOARD, 0, newBoard2, 0, crossover);
 			System.arraycopy(n1.BOARD, crossover, newBoard2, crossover, N-crossover);
 			Node n21 = new Node(newBoard2);
+		}
+	}
+
+	private static final class Result {
+		final Node TERMINAL_STATE;
+		final int NUM_MOVES;
+		final long START_TIME;
+		final long END_TIME;
+
+		Result(Node terminalState, int numMoves, long startTime) {
+			this.TERMINAL_STATE = terminalState;
+			this.NUM_MOVES = numMoves;
+			this.START_TIME = startTime;
+			this.END_TIME = System.nanoTime();
 		}
 	}
 
@@ -179,10 +233,10 @@ public class Main {
 			return new Node(NEW_BOARD);
 		}
 
-		List<Node> generateBestSuccessors() {
+		List<Node> generateBetterSuccessors() {
 			int cost;
 			int originalValue;
-			int minCost = COST-1;
+			int minCost = Math.max(COST-1, 1);
 			int[] copy;
 			int[] board = Arrays.copyOf(BOARD, BOARD.length);
 			List<Node> bestSuccessors = new ArrayList<>();
@@ -196,6 +250,10 @@ public class Main {
 					board[i] = j;
 					cost = countAttacking(board);
 					if (cost <= minCost) {
+						//if (cost <= 0) {
+						//	continue;
+						//}
+
 						if (cost == minCost) {
 							minCost = cost;
 							bestSuccessors.clear();
