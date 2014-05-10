@@ -71,6 +71,7 @@ public class Main {
 		Set<Integer> solutions = new HashSet<>();
 		double count = 0;
 		double moves = 0;
+		double noSolutionMoves = 0;
 
 		Path file = Paths.get(".", "output", "output.txt");
 		Charset charset = Charset.forName("US-ASCII");
@@ -99,6 +100,8 @@ public class Main {
 					count++;
 					moves += r.NUM_MOVES;
 					solutions.add(i+1);
+				} else {
+					noSolutionMoves += r.NUM_MOVES;
 				}
 
 				writer.write(String.format("%d\t%d\t%d\t%d%n", i+1, r.TERMINAL_STATE.COST, r.NUM_MOVES, TimeUnit.NANOSECONDS.toNanos(r.END_TIME-r.START_TIME)));
@@ -111,6 +114,7 @@ public class Main {
 
 		System.out.format("%.1f%% of problems were solved.%n", (count/ITERATIONS)*100);
 		System.out.format("Avg. number of moves needed per solution: %.1f%n", moves/count);
+		System.out.format("Avg. number of moves needed per no solution: %.1f%n", noSolutionMoves/(ITERATIONS-count));
 		System.out.format("Solution Set (Iteration #): %s%n", Arrays.toString(solutions.toArray(new Integer[0])));
 	}
 
