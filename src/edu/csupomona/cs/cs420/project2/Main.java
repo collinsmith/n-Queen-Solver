@@ -9,7 +9,6 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -18,8 +17,11 @@ import java.util.Random;
 import java.util.Scanner;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
-import java.util.function.UnaryOperator;
 
+/**
+ * 
+ * @author Collin Smith (collinsmith@csupomona.edu)
+ */
 public class Main {
 	private static final Random RAND = new Random();
 
