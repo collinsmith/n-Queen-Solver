@@ -9,13 +9,16 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
 import java.util.Scanner;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.function.UnaryOperator;
 
 public class Main {
 	private static final Random RAND = new Random();
@@ -26,10 +29,36 @@ public class Main {
 		final int N = SCAN.nextInt();
 		System.out.format("How many random n-Queen problems do you want to generate? ");
 		final int ITERATIONS = SCAN.nextInt();
-		System.out.format("Do you want to view the paths (y/n)? ");
-		final boolean PRINT_PATHS = SCAN.next("(y|n)").matches("y");
+		System.out.format("Do you run the hill-climbing algorithm (y/n)? ");
+		final boolean HILL_CLIMBING = SCAN.next("(y|n)").matches("y");
+		if (HILL_CLIMBING) {
+			System.out.format("Do you want to view the paths (y/n)? ");
+		} else {
+			System.out.format("How many elements do you want in each generation? ");
+		}
+		
+		final boolean PRINT_PATHS = HILL_CLIMBING ? SCAN.next("(y|n)").matches("y") : false;
+		final int GENERATION_ELEMENT_COUNT = HILL_CLIMBING ? 0 : SCAN.nextInt();
 		SCAN.close();
 
+		if (!HILL_CLIMBING) {
+			Result r;
+			for (int i = 0; i < ITERATIONS; i++) {
+				List<Node> initialStates = new ArrayList(GENERATION_ELEMENT_COUNT);
+				for (int j = 0; j < GENERATION_ELEMENT_COUNT; j++) {
+					initialStates.add(new Node(generateRandomBoard(N)));
+				}
+
+				r = runGenetic(initialStates);
+				System.out.format("Iteration %d:%n", i+1);
+				System.out.println(r.TERMINAL_STATE);
+				System.out.format("Elapsed Time: %dms%n", TimeUnit.NANOSECONDS.toMillis(r.END_TIME-r.START_TIME));
+				System.out.format("Finished in %d generations.%n", r.NUM_MOVES);
+				System.out.format("Number of attacking queens: %d%n", r.TERMINAL_STATE.COST);
+			}
+			return;
+		}
+		
 		Set<Integer> solutions = new HashSet<>();
 		double count = 0;
 		double moves = 0;
@@ -48,7 +77,7 @@ public class Main {
 			int[] board;
 			for (int i = 0; i < ITERATIONS; i++) {
 				board = generateRandomBoard(N);
-				r = hillClimb(board, PRINT_PATHS);
+				r = runHillClimbing(board, PRINT_PATHS);
 				if (PRINT_PATHS) {
 					System.out.format("Iteration %d:%n", i+1);
 					System.out.println(r.TERMINAL_STATE);
@@ -105,7 +134,7 @@ public class Main {
 		arr[i] ^= arr[j];
 	}
 
-	private static Result hillClimb(int[] initialState, boolean printPaths) {
+	private static Result runHillClimbing(int[] initialState, boolean printPaths) {
 		Node neighbor;
 		List<Node> betterSuccessors;
 		Node current = new Node(initialState);
@@ -121,7 +150,7 @@ public class Main {
 
 			betterSuccessors = current.generateBetterSuccessors();
 			if (betterSuccessors.isEmpty()) {
-				// peak reached
+				// peak reached, not a guaranteed solution
 				return new Result(current, moves, START_TIME);
 			}
 
@@ -136,8 +165,57 @@ public class Main {
 		}
 	}
 
+	private static Result runGenetic(List<Node> initialStates) {
+		Node[] crossover;
+		Node highestFitness;
+		List<Node> crossedOver = new ArrayList(initialStates.size());
+		List<Node> bestOfCurrentGeneration;
+		List<Node> nextGeneration = initialStates;
+		
+		int generations = 0;
+		final long START_TIME = System.nanoTime();
+		while (true) {
+			bestOfCurrentGeneration = Genetic.select(nextGeneration);
+			for (Node n : bestOfCurrentGeneration) {
+				if (n.COST == 1) {
+					return new Result(n, generations, START_TIME);
+				}
+			}
+
+			crossedOver.clear();
+			highestFitness = bestOfCurrentGeneration.get(0);
+			for (int i = 1; i < bestOfCurrentGeneration.size(); i++) {
+				crossover = Genetic.crossover(highestFitness, bestOfCurrentGeneration.get(i));
+				crossedOver.add(crossover[0]);
+				crossedOver.add(crossover[1]);
+			}
+
+			nextGeneration.clear();
+			for (Node n : crossedOver) {
+				nextGeneration.add(Genetic.mutate(n));
+			}
+			
+			generations++;
+		}
+	}
+	
 	private static class Genetic {
-		void crossover(Node n1, Node n2) {
+		static final Comparator<Node> FITNESS_FUNCTION = (Node n1, Node n2) -> {
+			return n1.COST - n2.COST;
+		};
+		
+		static List<Node> select(List<Node> currentGeneration) {
+			assert (currentGeneration.size()&1) == 0 : "Generation sizes should be even!";
+			Collections.sort(currentGeneration, FITNESS_FUNCTION);
+			List<Node> nextGeneration = new ArrayList<>();
+			for (int i = 0; i <= currentGeneration.size()>>1; i++) {
+				nextGeneration.add(currentGeneration.get(i));
+			}
+			
+			return nextGeneration;
+		}
+		
+		static Node[] crossover(Node n1, Node n2) {
 			assert n1.BOARD.length == n2.BOARD.length;
 			final int N = n1.BOARD.length;
 			final int crossover = RAND.nextInt(N);
@@ -151,6 +229,15 @@ public class Main {
 			System.arraycopy(n2.BOARD, 0, newBoard2, 0, crossover);
 			System.arraycopy(n1.BOARD, crossover, newBoard2, crossover, N-crossover);
 			Node n21 = new Node(newBoard2);
+			
+			return new Node[] { n12, n21 };
+		}
+		
+		static Node mutate(Node n) {
+			int[] mutated = Arrays.copyOf(n.BOARD, n.BOARD.length);
+			final int POS = RAND.nextInt(mutated.length);
+			mutated[POS] = RAND.nextInt(mutated.length);
+			return new Node(mutated);
 		}
 	}
 
