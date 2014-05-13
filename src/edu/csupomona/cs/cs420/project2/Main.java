@@ -135,13 +135,7 @@ public class Main {
 	private static int[] generateRandomBoard(final int N) {
 		int[] BOARD = new int[N];
 		for (int i = 0; i < BOARD.length; i++) {
-			BOARD[i] = i;
-		}
-
-		int randomIndex;
-		for (int i = 0; i < BOARD.length; i++) {
-			randomIndex = RAND.nextInt(BOARD.length);
-			swap(BOARD, i, randomIndex);
+			BOARD[i] = RAND.nextInt(BOARD.length);
 		}
 
 		return BOARD;
@@ -303,13 +297,15 @@ public class Main {
 		}
 		
 		/**
-		 * Performs a mutation operation on the given node with {@code P=1}
+		 * Performs a mutation operation on the given node with a given chance to mutate.
 		 * 
 		 * @param n the node to mutate
+* @param chance the chance between 0 and 1 to mutate
 		 * 
 		 * @return the result of the mutation
 		 */
-		static Node mutate(Node n) {
+		static Node mutate(Node n, double chance) {
+if (chance < Math.rand()) return n;
 			int[] mutated = Arrays.copyOf(n.BOARD, n.BOARD.length);
 			final int POS = RAND.nextInt(mutated.length);
 			mutated[POS] = RAND.nextInt(mutated.length);
